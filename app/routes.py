@@ -2,6 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from .database import SessionLocal
+from sqlalchemy import func
 from .models import Ticket, TicketCreate, TicketResponse
 from app.agents.resolver_agent import process_next_ticket, process_ticket_background
 from app.agents.ticket_generator_agent import generate_ticket
@@ -74,3 +75,60 @@ def create_generated_ticket(
     background_tasks.add_task(process_ticket_background)
 
     return ticket
+
+
+@router.get("/analytics/summary")
+def get_summary(db: Session = Depends(get_db)):
+    total = db.query(func.count(Ticket.id)).scalar()
+    open_count = db.query(func.count(Ticket.id)).filter(Ticket.status == "OPEN").scalar()
+    resolved_count = db.query(func.count(Ticket.id)).filter(Ticket.status == "RESOLVED").scalar()
+
+    resolution_rate = 0
+    if total and total > 0:
+        resolution_rate = round((resolved_count / total) * 100, 2)
+
+    return {
+        "total": total,
+        "open": open_count,
+        "resolved": resolved_count,
+        "resolution_rate": resolution_rate
+    }
+
+@router.get("/analytics/by-department")
+def get_by_department(db: Session = Depends(get_db)):
+    results = (
+        db.query(Ticket.category, func.count(Ticket.id))
+        .group_by(Ticket.category)
+        .all()
+    )
+
+    return [
+        {"category": category, "count": count}
+        for category, count in results
+    ]
+
+
+@router.get("/analytics/status-count")
+def get_status_count(db: Session = Depends(get_db)):
+    results = (
+        db.query(Ticket.status, func.count(Ticket.id))
+        .group_by(Ticket.status)
+        .all()
+    )
+
+    return [
+        {"status": status, "count": count}
+        for status, count in results
+    ]
+
+@router.get("/analytics/recent")
+def get_recent_activity(db: Session = Depends(get_db)):
+    tickets = (
+        db.query(Ticket)
+        .filter(Ticket.status == "RESOLVED")
+        .order_by(Ticket.updated_at.desc())
+        .limit(10)
+        .all()
+    )
+
+    return tickets
