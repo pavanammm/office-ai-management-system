@@ -16,3 +16,4 @@ app.include_router(router)
 @app.get("/")
 def read_root():
     return {"message": "Office AI System is running"}
+print("DEBUG PORT VALUE:", os.environ.get("PORT"))
