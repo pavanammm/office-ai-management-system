@@ -7,7 +7,7 @@ from app.agents.department_agents import (
     management_agent,
     employee_relations_agent,
 )
-
+from app.database import SessionLocal
 
 def process_next_ticket(db: Session):
     ticket = db.query(Ticket).filter(Ticket.status == "OPEN").first()
@@ -41,3 +41,13 @@ def process_next_ticket(db: Session):
     db.refresh(ticket)
 
     return ticket
+
+
+
+
+def process_ticket_background():
+    db = SessionLocal()
+    try:
+        process_next_ticket(db)
+    finally:
+        db.close()
