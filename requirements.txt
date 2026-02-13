@@ -1,0 +1,7 @@
+# Dependencies will be added later
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+python-dotenv
+requests
